@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Игры для мероприятия</title>
+    <link rel="stylesheet" href="global/styles/main.css" />
+    <style>
+      .game-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 20px;
+        padding: 20px;
+        max-width: 1200px;
+        margin: 0 auto;
+      }
+
+      .game-card {
+        background: white;
+        border-radius: 12px;
+        padding: 24px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        transition: transform 0.3s, box-shadow 0.3s;
+        cursor: pointer;
+      }
+
+      .game-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 12px rgba(0, 0, 0, 0.15);
+      }
+
+      .game-card h2 {
+        color: #2c3e50;
+        margin-bottom: 12px;
+        font-size: 1.4em;
+      }
+
+      .game-card p {
+        color: #7f8c8d;
+        line-height: 1.6;
+        margin-bottom: 16px;
+      }
+
+      .game-card .btn {
+        width: 100%;
+        padding: 12px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 1.1em;
+        cursor: pointer;
+        transition: opacity 0.3s;
+      }
+
+      .game-card .btn:hover {
+        opacity: 0.9;
+      }
+
+      .header {
+        text-align: center;
+        padding: 40px 20px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+      }
+
+      .header h1 {
+        margin: 0;
+        font-size: 2.5em;
+      }
+
+      .header p {
+        margin: 10px 0 0;
+        opacity: 0.9;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <h1>🎮 Игры для мероприятия</h1>
+      <p>Выберите игру для начала</p>
+    </div>
+
+    <main style="max-width: 1200px; margin: 20px auto; padding: 0 16px">
+
+
+      <section class="game-grid">
+        <div
+          class="game-card"
+          onclick="window.location.href='games/names-from-pictures/'"
+        >
+          <h2>🖼️ Имена по картинкам</h2>
+          <p>Угадайте названия мест Казахстана по двум картинкам-подсказкам</p>
+          <button class="btn">Начать игру</button>
+        </div>
+
+        <div
+          class="game-card"
+          onclick="window.location.href='games/photo-relay/'"
+        >
+          <h2>📸 Фото-эстафета</h2>
+          <p>Командная игра: сделайте фото по заданной теме</p>
+          <button class="btn">Начать игру</button>
+        </div>
+
+        <div
+          class="game-card"
+          onclick="window.location.href='games/grandparents-vs-youth/'"
+        >
+          <h2>👵 Поколения</h2>
+          <p>Молодёжь против бабушек и дедушек: угадайте предметы</p>
+          <button class="btn">Начать игру</button>
+        </div>
+
+        <div
+          class="game-card"
+          onclick="window.location.href='games/bring-item/'"
+        >
+          <h2>🏃 Принеси предмет</h2>
+          <p>Игра на выбывание: найдите нужный предмет в зале</p>
+          <button class="btn">Начать игру</button>
+        </div>
+
+        <div
+          class="game-card"
+          onclick="window.location.href='games/random-letter/'"
+        >
+          <h2>🎵 Песня на букву</h2>
+          <p>Спойте песню, начинающуюся на случайную букву</p>
+          <button class="btn">Начать игру</button>
+        </div>
+      </section>
+    </main>
+
+
+  </body>
+</html>

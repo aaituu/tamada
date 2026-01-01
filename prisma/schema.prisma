@@ -1,0 +1,38 @@
+// Prisma Schema для Event Games
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String   // Хешированный пароль
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  devices   Device[]
+  
+  @@map("users")
+}
+
+model Device {
+  id           String   @id @default(uuid())
+  userId       String
+  deviceName   String   // Название устройства (например: "Chrome on Windows")
+  userAgent    String   // User-Agent строка
+  fingerprint  String   @unique // Уникальный идентификатор устройства
+  lastUsedAt   DateTime @default(now())
+  createdAt    DateTime @default(now())
+  
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("devices")
+  @@index([userId])
+}
