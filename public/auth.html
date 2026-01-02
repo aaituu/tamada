@@ -195,14 +195,33 @@
       </form>
     </div>
 
-    <script src="global/scripts/auth.js"></script>
     <script>
       const API_URL = "/api";
 
       window.onload = async () => {
-        const ok = await authHelpers.verifyToken();
-        if (ok) {
-          window.location.href = "/";
+        const token = localStorage.getItem("token") || sessionStorage.getItem("token");
+        if (token) {
+          try {
+            const response = await fetch(`${API_URL}/auth/verify`, {
+              headers: { Authorization: `Bearer ${token}` },
+              credentials: "include",
+            });
+            
+            if (response.ok) {
+              const data = await response.json();
+              if (data.success) {
+                window.location.href = "/";
+                return;
+              }
+            }
+            
+            localStorage.removeItem("token");
+            sessionStorage.removeItem("token");
+          } catch (error) {
+            console.error("Token verification error:", error);
+            localStorage.removeItem("token");
+            sessionStorage.removeItem("token");
+          }
         }
       };
 
@@ -266,27 +285,16 @@
             body: JSON.stringify({ name, email, password }),
           });
 
-          let data = null;
-          const ct = response.headers.get("content-type") || "";
-          if (ct.includes("application/json")) {
-            try {
-              data = await response.json();
-            } catch (e) {
-              data = null;
-            }
-          }
+          const data = await response.json();
 
-          if (response.ok) {
+          if (response.ok && data.success) {
             showSuccess("Регистрация успешна! Теперь войдите в систему.");
             setTimeout(() => {
               switchTab("login");
               document.getElementById("loginEmail").value = email;
             }, 2000);
           } else {
-            showError(
-              (data && data.message) ||
-                `Ошибка регистрации (status ${response.status})`
-            );
+            showError(data.message || "Ошибка регистрации");
           }
         } catch (error) {
           console.error("Ошибка:", error);
@@ -311,43 +319,24 @@
             body: JSON.stringify({ email, password }),
           });
 
-          let data = null;
-          const ct = response.headers.get("content-type") || "";
-          if (ct.includes("application/json")) {
-            try {
-              data = await response.json();
-            } catch (e) {
-              data = null;
-            }
-          }
+          const data = await response.json();
 
-          if (response.ok) {
-            if (data && data.token) {
-              authHelpers.setToken(data.token);
-            }
+          if (response.ok && data.success && data.token) {
+            localStorage.setItem("token", data.token);
             showSuccess("Вход выполнен успешно!");
-
             setTimeout(() => {
               window.location.href = "/";
             }, 1000);
           } else {
-            showError(
-              (data && data.message) ||
-                `Ошибка входа (status ${response.status})`
-            );
-
-            if (data && data.devices) {
-              let message =
-                "Превышен лимит устройств. Удалите одно из устройств:\n\n";
+            if (data.devices && data.devices.length > 0) {
+              let message = data.message + "\n\nВаши устройства:\n";
               data.devices.forEach((device, index) => {
-                const lastUsed = new Date(device.lastUsed).toLocaleString(
-                  "ru-RU"
-                );
-                message += `${index + 1}. ${
-                  device.name
-                } (последний вход: ${lastUsed})\n`;
+                const lastUsed = new Date(device.lastUsed).toLocaleString("ru-RU");
+                message += `${index + 1}. ${device.name} (${lastUsed})\n`;
               });
-              alert(message);
+              showError(message);
+            } else {
+              showError(data.message || "Ошибка входа");
             }
           }
         } catch (error) {

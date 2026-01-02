@@ -35,5 +35,6 @@ CREATE INDEX "devices_userId_idx" ON "devices"("userId");
 -- AddForeignKey
 ALTER TABLE "devices" ADD CONSTRAINT "devices_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
--- AlterTable
+
+-- Add gameStats column to users table
 ALTER TABLE "users" ADD COLUMN "gameStats" JSONB DEFAULT '{}'::jsonb;

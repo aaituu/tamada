@@ -36,7 +36,10 @@ exports.getProfile = async (req, res) => {
 
     res.json({
       success: true,
-      user
+      user: {
+        ...user,
+        gameStats: user.gameStats || {}
+      }
     });
   } catch (error) {
     console.error('Ошибка получения профиля:', error);
@@ -64,7 +67,23 @@ exports.trackGameVisit = async (req, res) => {
       select: { gameStats: true }
     });
 
-    const currentStats = user.gameStats || {};
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'Пользователь не найден'
+      });
+    }
+
+    // Преобразуем JSON в объект, если это необходимо
+    let currentStats = {};
+    if (user.gameStats) {
+      if (typeof user.gameStats === 'string') {
+        currentStats = JSON.parse(user.gameStats);
+      } else if (typeof user.gameStats === 'object') {
+        currentStats = user.gameStats;
+      }
+    }
+
     const updatedStats = {
       ...currentStats,
       [gameName]: (currentStats[gameName] || 0) + 1

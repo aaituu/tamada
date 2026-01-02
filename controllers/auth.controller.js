@@ -70,8 +70,10 @@ exports.register = async (req, res) => {
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
-    const userAgent = req.headers["user-agent"];
-    console.log("Login attempt:", { email, ip: req.ip, ua: userAgent });
+    const userAgent = req.headers["user-agent"] || "Unknown";
+    const clientIp = req.ip || req.connection.remoteAddress || "Unknown";
+    
+    console.log("Login attempt:", { email, ip: clientIp, ua: userAgent });
 
     // Валидация
     if (!email || !password) {
@@ -81,7 +83,7 @@ exports.login = async (req, res) => {
       });
     }
 
-    // Поиск пользователя (включая хеш пароля и устройства)
+    // Поиск пользователя
     const user = await prisma.user.findUnique({
       where: { email },
       select: {
@@ -116,7 +118,7 @@ exports.login = async (req, res) => {
     }
 
     // Генерация отпечатка устройства
-    const deviceFingerprint = generateDeviceFingerprint(userAgent, req.ip);
+    const deviceFingerprint = generateDeviceFingerprint(userAgent, clientIp);
 
     // Проверка существующего устройства
     let device = await prisma.device.findUnique({
@@ -159,28 +161,21 @@ exports.login = async (req, res) => {
     // Генерация JWT токена
     if (!process.env.JWT_SECRET) {
       console.error("JWT_SECRET not set");
-      return res
-        .status(500)
-        .json({ success: false, message: "Server configuration error" });
+      return res.status(500).json({ 
+        success: false, 
+        message: "Ошибка конфигурации сервера" 
+      });
     }
 
-    let token;
-    try {
-      token = jwt.sign(
-        {
-          userId: user.id,
-          email: user.email,
-          deviceId: device.id,
-        },
-        process.env.JWT_SECRET,
-        { expiresIn: "7d" }
-      );
-    } catch (signErr) {
-      console.error("JWT sign error:", signErr);
-      return res
-        .status(500)
-        .json({ success: false, message: "Ошибка генерации токена" });
-    }
+    const token = jwt.sign(
+      {
+        userId: user.id,
+        email: user.email,
+        deviceId: device.id,
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
 
     // Установка cookie
     res.cookie("token", token, {
@@ -189,6 +184,7 @@ exports.login = async (req, res) => {
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 дней
     });
 
+    // Успешный ответ
     res.json({
       success: true,
       message: "Вход выполнен успешно",

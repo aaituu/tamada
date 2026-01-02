@@ -4,7 +4,16 @@ const jwt = require('jsonwebtoken');
 exports.authenticate = (req, res, next) => {
   try {
     // Получить токен из заголовка или cookie
-    const token = req.headers.authorization?.split(' ')[1] || req.cookies.token;
+    const authHeader = req.headers.authorization;
+    let token = null;
+
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.substring(7);
+    } else if (req.cookies && req.cookies.token) {
+      token = req.cookies.token;
+    }
+
+    console.log('Auth middleware - token found:', !!token);
 
     if (!token) {
       return res.status(401).json({
@@ -13,8 +22,17 @@ exports.authenticate = (req, res, next) => {
       });
     }
 
+    if (!process.env.JWT_SECRET) {
+      console.error('JWT_SECRET not configured');
+      return res.status(500).json({
+        success: false,
+        message: 'Ошибка конфигурации сервера'
+      });
+    }
+
     // Проверить токен
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    console.log('Token decoded:', { userId: decoded.userId, email: decoded.email });
 
     // Добавить данные пользователя в request
     req.userId = decoded.userId;
@@ -23,6 +41,8 @@ exports.authenticate = (req, res, next) => {
 
     next();
   } catch (error) {
+    console.error('Auth middleware error:', error.message);
+    
     if (error.name === 'TokenExpiredError') {
       return res.status(401).json({
         success: false,
