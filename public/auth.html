@@ -149,92 +149,9 @@
       .hidden {
         display: none;
       }
-
-      .dashboard {
-        display: none;
-      }
-
-      .dashboard.active {
-        display: block;
-      }
-
-      .user-info {
-        background: #f8f9fa;
-        padding: 20px;
-        border-radius: 15px;
-        margin-bottom: 20px;
-      }
-
-      .user-info h2 {
-        color: #667eea;
-        margin-bottom: 10px;
-      }
-
-      .user-info p {
-        color: #7f8c8d;
-        margin-bottom: 5px;
-      }
-
-      .devices-section {
-        margin-top: 30px;
-      }
-
-      .devices-section h3 {
-        color: #34495e;
-        margin-bottom: 15px;
-      }
-
-      .device-item {
-        background: #f8f9fa;
-        padding: 15px;
-        border-radius: 10px;
-        margin-bottom: 10px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-      }
-
-      .device-info {
-        flex: 1;
-      }
-
-      .device-info strong {
-        display: block;
-        color: #34495e;
-        margin-bottom: 5px;
-      }
-
-      .device-info small {
-        color: #7f8c8d;
-      }
-
-      .device-actions button {
-        padding: 8px 15px;
-        border: none;
-        border-radius: 8px;
-        background: #ff6b6b;
-        color: white;
-        cursor: pointer;
-        font-size: 0.9em;
-      }
-
-      .device-actions button:hover {
-        background: #ee5a52;
-      }
-
-      .btn-logout {
-        background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%);
-        margin-top: 20px;
-      }
-
-      .btn-games {
-        background: linear-gradient(135deg, #51cf66 0%, #37b24d 100%);
-        margin-top: 10px;
-      }
     </style>
   </head>
   <body>
-    <!-- Форма авторизации -->
     <div class="auth-container" id="authContainer">
       <div class="logo">
         <h1>🎮 Event Games</h1>
@@ -249,7 +166,6 @@
       <div id="errorMessage" class="error-message"></div>
       <div id="successMessage" class="success-message"></div>
 
-      <!-- Форма входа -->
       <form id="loginForm" onsubmit="handleLogin(event)">
         <div class="form-group">
           <label>Email</label>
@@ -262,7 +178,6 @@
         <button type="submit" class="btn">Войти</button>
       </form>
 
-      <!-- Форма регистрации -->
       <form id="registerForm" class="hidden" onsubmit="handleRegister(event)">
         <div class="form-group">
           <label>Имя (необязательно)</label>
@@ -280,25 +195,166 @@
       </form>
     </div>
 
-    <!-- Dashboard (после входа) -->
-    <div class="auth-container dashboard" id="dashboard">
-      <div class="logo">
-        <h1>🎮 Event Games</h1>
-      </div>
+    <script src="global/scripts/auth.js"></script>
+    <script>
+      const API_URL = "/api";
 
-      <div class="user-info" id="userInfo"></div>
+      window.onload = async () => {
+        const ok = await authHelpers.verifyToken();
+        if (ok) {
+          window.location.href = "/";
+        }
+      };
 
-      <div class="devices-section">
-        <h3>📱 Ваши устройства</h3>
-        <div id="devicesList"></div>
-      </div>
+      function switchTab(tab) {
+        const loginForm = document.getElementById("loginForm");
+        const registerForm = document.getElementById("registerForm");
+        const tabs = document.querySelectorAll(".tab");
 
-      <button class="btn btn-games" onclick="goToGames()">
-        Перейти к играм
-      </button>
-      <button class="btn btn-logout" onclick="handleLogout()">Выйти</button>
-    </div>
+        tabs.forEach((t) => t.classList.remove("active"));
 
-    <script src="auth.js"></script>
+        if (tab === "login") {
+          loginForm.classList.remove("hidden");
+          registerForm.classList.add("hidden");
+          tabs[0].classList.add("active");
+        } else {
+          loginForm.classList.add("hidden");
+          registerForm.classList.remove("hidden");
+          tabs[1].classList.add("active");
+        }
+
+        clearMessages();
+      }
+
+      function showError(message) {
+        const errorDiv = document.getElementById("errorMessage");
+        errorDiv.textContent = message;
+        errorDiv.style.display = "block";
+        setTimeout(() => {
+          errorDiv.style.display = "none";
+        }, 5000);
+      }
+
+      function showSuccess(message) {
+        const successDiv = document.getElementById("successMessage");
+        successDiv.textContent = message;
+        successDiv.style.display = "block";
+        setTimeout(() => {
+          successDiv.style.display = "none";
+        }, 5000);
+      }
+
+      function clearMessages() {
+        document.getElementById("errorMessage").style.display = "none";
+        document.getElementById("successMessage").style.display = "none";
+      }
+
+      async function handleRegister(event) {
+        event.preventDefault();
+        clearMessages();
+
+        const name = document.getElementById("registerName").value;
+        const email = document.getElementById("registerEmail").value;
+        const password = document.getElementById("registerPassword").value;
+
+        try {
+          const response = await fetch(`${API_URL}/auth/register`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ name, email, password }),
+          });
+
+          let data = null;
+          const ct = response.headers.get("content-type") || "";
+          if (ct.includes("application/json")) {
+            try {
+              data = await response.json();
+            } catch (e) {
+              data = null;
+            }
+          }
+
+          if (response.ok) {
+            showSuccess("Регистрация успешна! Теперь войдите в систему.");
+            setTimeout(() => {
+              switchTab("login");
+              document.getElementById("loginEmail").value = email;
+            }, 2000);
+          } else {
+            showError(
+              (data && data.message) ||
+                `Ошибка регистрации (status ${response.status})`
+            );
+          }
+        } catch (error) {
+          console.error("Ошибка:", error);
+          showError("Ошибка сервера. Проверьте подключение.");
+        }
+      }
+
+      async function handleLogin(event) {
+        event.preventDefault();
+        clearMessages();
+
+        const email = document.getElementById("loginEmail").value;
+        const password = document.getElementById("loginPassword").value;
+
+        try {
+          const response = await fetch(`${API_URL}/auth/login`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            credentials: "include",
+            body: JSON.stringify({ email, password }),
+          });
+
+          let data = null;
+          const ct = response.headers.get("content-type") || "";
+          if (ct.includes("application/json")) {
+            try {
+              data = await response.json();
+            } catch (e) {
+              data = null;
+            }
+          }
+
+          if (response.ok) {
+            if (data && data.token) {
+              authHelpers.setToken(data.token);
+            }
+            showSuccess("Вход выполнен успешно!");
+
+            setTimeout(() => {
+              window.location.href = "/";
+            }, 1000);
+          } else {
+            showError(
+              (data && data.message) ||
+                `Ошибка входа (status ${response.status})`
+            );
+
+            if (data && data.devices) {
+              let message =
+                "Превышен лимит устройств. Удалите одно из устройств:\n\n";
+              data.devices.forEach((device, index) => {
+                const lastUsed = new Date(device.lastUsed).toLocaleString(
+                  "ru-RU"
+                );
+                message += `${index + 1}. ${
+                  device.name
+                } (последний вход: ${lastUsed})\n`;
+              });
+              alert(message);
+            }
+          }
+        } catch (error) {
+          console.error("Ошибка:", error);
+          showError("Ошибка сервера. Проверьте подключение.");
+        }
+      }
+    </script>
   </body>
 </html>

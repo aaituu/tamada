@@ -11,4 +11,4 @@ router.post('/logout', authController.logout);
 // Защищённые маршруты
 router.get('/verify', authenticate, authController.verifyToken);
 
-module.exports = router;
+module.exports = router;    

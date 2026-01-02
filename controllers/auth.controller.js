@@ -1,7 +1,10 @@
-const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken');
-const { PrismaClient } = require('@prisma/client');
-const { generateDeviceFingerprint, parseUserAgent } = require('../utils/device.utils');
+const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
+const { PrismaClient } = require("@prisma/client");
+const {
+  generateDeviceFingerprint,
+  parseUserAgent,
+} = require("../utils/device.utils");
 
 const prisma = new PrismaClient();
 const MAX_DEVICES = parseInt(process.env.MAX_DEVICES_PER_USER) || 2;
@@ -15,19 +18,19 @@ exports.register = async (req, res) => {
     if (!email || !password) {
       return res.status(400).json({
         success: false,
-        message: 'Email и пароль обязательны'
+        message: "Email и пароль обязательны",
       });
     }
 
     // Проверка существующего пользователя
     const existingUser = await prisma.user.findUnique({
-      where: { email }
+      where: { email },
     });
 
     if (existingUser) {
       return res.status(409).json({
         success: false,
-        message: 'Пользователь с таким email уже существует'
+        message: "Пользователь с таким email уже существует",
       });
     }
 
@@ -39,26 +42,26 @@ exports.register = async (req, res) => {
       data: {
         email,
         password: hashedPassword,
-        name: name || null
+        name: name || null,
       },
       select: {
         id: true,
         email: true,
         name: true,
-        createdAt: true
-      }
+        createdAt: true,
+      },
     });
 
     res.status(201).json({
       success: true,
-      message: 'Регистрация успешна',
-      user
+      message: "Регистрация успешна",
+      user,
     });
   } catch (error) {
-    console.error('Ошибка регистрации:', error);
+    console.error("Ошибка регистрации:", error);
     res.status(500).json({
       success: false,
-      message: 'Ошибка сервера при регистрации'
+      message: "Ошибка сервера при регистрации",
     });
   }
 };
@@ -67,32 +70,38 @@ exports.register = async (req, res) => {
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
-    const userAgent = req.headers['user-agent'];
+    const userAgent = req.headers["user-agent"];
+    console.log("Login attempt:", { email, ip: req.ip, ua: userAgent });
 
     // Валидация
     if (!email || !password) {
       return res.status(400).json({
         success: false,
-        message: 'Email и пароль обязательны'
+        message: "Email и пароль обязательны",
       });
     }
 
-    // Поиск пользователя
+    // Поиск пользователя (включая хеш пароля и устройства)
     const user = await prisma.user.findUnique({
       where: { email },
-      include: {
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        password: true,
+        createdAt: true,
         devices: {
           orderBy: {
-            lastUsedAt: 'desc'
-          }
-        }
-      }
+            lastUsedAt: "desc",
+          },
+        },
+      },
     });
 
     if (!user) {
       return res.status(401).json({
         success: false,
-        message: 'Неверный email или пароль'
+        message: "Неверный email или пароль",
       });
     }
 
@@ -102,16 +111,16 @@ exports.login = async (req, res) => {
     if (!isPasswordValid) {
       return res.status(401).json({
         success: false,
-        message: 'Неверный email или пароль'
+        message: "Неверный email или пароль",
       });
     }
 
     // Генерация отпечатка устройства
     const deviceFingerprint = generateDeviceFingerprint(userAgent, req.ip);
-    
+
     // Проверка существующего устройства
     let device = await prisma.device.findUnique({
-      where: { fingerprint: deviceFingerprint }
+      where: { fingerprint: deviceFingerprint },
     });
 
     // Если устройство новое
@@ -121,11 +130,11 @@ exports.login = async (req, res) => {
         return res.status(403).json({
           success: false,
           message: `Превышен лимит устройств (максимум ${MAX_DEVICES}). Удалите старое устройство для входа с нового.`,
-          devices: user.devices.map(d => ({
+          devices: user.devices.map((d) => ({
             id: d.id,
             name: d.deviceName,
-            lastUsed: d.lastUsedAt
-          }))
+            lastUsed: d.lastUsedAt,
+          })),
         });
       }
 
@@ -136,54 +145,69 @@ exports.login = async (req, res) => {
           userId: user.id,
           deviceName: deviceInfo.name,
           userAgent: userAgent,
-          fingerprint: deviceFingerprint
-        }
+          fingerprint: deviceFingerprint,
+        },
       });
     } else {
       // Обновление времени использования
       device = await prisma.device.update({
         where: { id: device.id },
-        data: { lastUsedAt: new Date() }
+        data: { lastUsedAt: new Date() },
       });
     }
 
     // Генерация JWT токена
-    const token = jwt.sign(
-      { 
-        userId: user.id, 
-        email: user.email,
-        deviceId: device.id 
-      },
-      process.env.JWT_SECRET,
-      { expiresIn: '7d' }
-    );
+    if (!process.env.JWT_SECRET) {
+      console.error("JWT_SECRET not set");
+      return res
+        .status(500)
+        .json({ success: false, message: "Server configuration error" });
+    }
+
+    let token;
+    try {
+      token = jwt.sign(
+        {
+          userId: user.id,
+          email: user.email,
+          deviceId: device.id,
+        },
+        process.env.JWT_SECRET,
+        { expiresIn: "7d" }
+      );
+    } catch (signErr) {
+      console.error("JWT sign error:", signErr);
+      return res
+        .status(500)
+        .json({ success: false, message: "Ошибка генерации токена" });
+    }
 
     // Установка cookie
-    res.cookie('token', token, {
+    res.cookie("token", token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 дней
+      secure: process.env.NODE_ENV === "production",
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 дней
     });
 
     res.json({
       success: true,
-      message: 'Вход выполнен успешно',
+      message: "Вход выполнен успешно",
       token,
       user: {
         id: user.id,
         email: user.email,
-        name: user.name
+        name: user.name,
       },
       device: {
         id: device.id,
-        name: device.deviceName
-      }
+        name: device.deviceName,
+      },
     });
   } catch (error) {
-    console.error('Ошибка входа:', error);
+    console.error("Ошибка входа:", error);
     res.status(500).json({
       success: false,
-      message: 'Ошибка сервера при входе'
+      message: "Ошибка сервера при входе",
     });
   }
 };
@@ -191,16 +215,16 @@ exports.login = async (req, res) => {
 // Выход
 exports.logout = async (req, res) => {
   try {
-    res.clearCookie('token');
+    res.clearCookie("token");
     res.json({
       success: true,
-      message: 'Выход выполнен успешно'
+      message: "Выход выполнен успешно",
     });
   } catch (error) {
-    console.error('Ошибка выхода:', error);
+    console.error("Ошибка выхода:", error);
     res.status(500).json({
       success: false,
-      message: 'Ошибка сервера при выходе'
+      message: "Ошибка сервера при выходе",
     });
   }
 };
@@ -214,26 +238,26 @@ exports.verifyToken = async (req, res) => {
         id: true,
         email: true,
         name: true,
-        createdAt: true
-      }
+        createdAt: true,
+      },
     });
 
     if (!user) {
       return res.status(404).json({
         success: false,
-        message: 'Пользователь не найден'
+        message: "Пользователь не найден",
       });
     }
 
     res.json({
       success: true,
-      user
+      user,
     });
   } catch (error) {
-    console.error('Ошибка проверки токена:', error);
+    console.error("Ошибка проверки токена:", error);
     res.status(500).json({
       success: false,
-      message: 'Ошибка сервера'
+      message: "Ошибка сервера",
     });
   }
 };

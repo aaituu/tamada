@@ -29,7 +29,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/devices', deviceRoutes);
 
-// Главная страница
+// Главная страница - редирект на auth.html если не авторизован
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });

@@ -7,5 +7,6 @@ const { authenticate } = require('../middlewares/auth.middleware');
 router.use(authenticate);
 
 router.get('/profile', userController.getProfile);
+router.post('/track-game', userController.trackGameVisit);
 
 module.exports = router;
